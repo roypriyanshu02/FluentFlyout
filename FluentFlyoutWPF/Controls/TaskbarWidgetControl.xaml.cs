@@ -571,7 +571,7 @@ public partial class TaskbarWidgetControl : UserControl
         Dispatcher.Invoke(() =>
         {
             string newTitle = !string.IsNullOrEmpty(title) ? title : "-";
-            string newArtist = artist ?? string.Empty;
+            string newArtist = !string.IsNullOrEmpty(artist) ? artist : "-";
 
             if (_actualTitle != newTitle || _actualArtist != newArtist)
             {
@@ -632,7 +632,7 @@ public partial class TaskbarWidgetControl : UserControl
             }
 
             SongTitle.Visibility = Visibility.Visible;
-            SongArtistContainer.Visibility = !_isSmallTaskbar && !_isVertical && !string.IsNullOrEmpty(_actualArtist)
+            SongArtistContainer.Visibility = !_isSmallTaskbar && !_isVertical && !string.IsNullOrEmpty(artist)
                 ? Visibility.Visible
                 : Visibility.Collapsed;
             SongInfoStackPanel.Visibility = _isVertical ? Visibility.Collapsed : Visibility.Visible;
@@ -663,27 +663,43 @@ public partial class TaskbarWidgetControl : UserControl
             SongInfoStackPanel.ToolTip += $" ({appVolume:P0})";
     }
 
-    private async void AnimateEntrance()
+    private void AnimateEntrance()
     {
         try
         {
             int msDuration = MainWindow.getDuration();
+            if (msDuration == 0 || !SettingsManager.Current.TaskbarWidgetAnimated)
+            {
+                SongInfoStackPanel.BeginAnimation(OpacityProperty, null);
+                SongInfoStackPanel.Opacity = 1.0;
+                SongInfoStackPanel.RenderTransform = null;
+                if (SettingsManager.Current.TaskbarWidgetControlsEnabled)
+                {
+                    ControlsStackPanel.BeginAnimation(OpacityProperty, null);
+                    ControlsStackPanel.Opacity = 1.0;
+                    ControlsStackPanel.RenderTransform = null;
+                }
+                return;
+            }
+
+            var easing = _mainWindow != null ? _mainWindow.getEasingStyle(true) : new QuadraticEase { EasingMode = EasingMode.EaseOut };
+            var duration = TimeSpan.FromMilliseconds(msDuration);
 
             // opacity and left to right animation for SongInfoStackPanel
             DoubleAnimation opacityAnimation = new()
             {
                 From = 0.0,
                 To = 1.0,
-                Duration = TimeSpan.FromMilliseconds(msDuration),
-                EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut }
+                Duration = duration,
+                EasingFunction = easing
             };
 
             DoubleAnimation translateAnimation = new()
             {
                 From = -10,
                 To = 0,
-                Duration = TimeSpan.FromMilliseconds(msDuration),
-                EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut }
+                Duration = duration,
+                EasingFunction = easing
             };
 
             // Apply animations
